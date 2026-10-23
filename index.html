@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNTH OS — Tech Simulator</title>
+<meta name="description" content="SYNTH OS — a simulated futuristic tech environment: live telemetry, terminal and system modules.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='18'%20fill='%2305070d'/%3E%3Ctext%20x='50'%20y='70'%20font-size='56'%20font-family='monospace'%20fill='%2300ffd5'%20text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hover.css/2.3.1/css/hover-min.css">
+<style>
+  :root {
+    --bg: #05070d;
+    --panel: #0b1120;
+    --edge: rgba(0, 255, 213, 0.22);
+    --cyan: #00ffd5;
+    --blue: #4d9fff;
+    --red: #ff4d6d;
+    --amber: #ffb84d;
+    --dim: #5b7290;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: #dbe9ff;
+    font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    min-height: 100vh;
+    background-image:
+      linear-gradient(rgba(0,255,213,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,213,0.03) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  ::selection { background: var(--cyan); color: var(--bg); }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .8rem 1.2rem;
+    background: rgba(5, 7, 13, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--edge);
+  }
+  .brand { font-weight: 800; letter-spacing: .12em; color: var(--cyan); }
+  .brand small { color: var(--dim); letter-spacing: .05em; margin-left: .5rem; }
+  .clock { color: var(--dim); font-size: .8rem; }
+  .clock b { color: var(--cyan); }
+
+  /* ---------- nav ---------- */
+  nav {
+    display: flex; gap: .6rem; flex-wrap: wrap;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--edge);
+  }
+  nav a {
+    position: relative;
+    color: var(--dim); text-decoration: none;
+    font-size: .82rem; letter-spacing: .08em;
+    padding: .5rem 1rem;
+    border: 1px solid transparent;
+    transition: color .2s, border-color .2s, background .2s;
+  }
+  nav a:hover, nav a.active {
+    color: var(--cyan);
+    border-color: var(--edge);
+    background: rgba(0, 255, 213, .06);
+  }
+  nav a.active::before {
+    content: '▸ ';
+    color: var(--red);
+  }
+
+  /* ---------- layout ---------- */
+  main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.2rem 4rem; }
+  .screen { display: none; }
+  .screen.on { display: block; }
+  h2 {
+    font-size: 1.05rem; letter-spacing: .14em; color: var(--cyan);
+    margin: 1.6rem 0 1rem; text-transform: uppercase;
+  }
+  h2::before { content: '// '; color: var(--red); }
+  .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    padding: 1.1rem;
+    position: relative;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .panel h3 { font-size: .78rem; color: var(--dim); letter-spacing: .1em; margin-bottom: .7rem; text-transform: uppercase; }
+  .big { font-size: 2.1rem; font-weight: 800; color: var(--cyan); font-variant-numeric: tabular-nums; }
+  .big small { font-size: .9rem; color: var(--dim); }
+  .bar { height: 8px; border-radius: 4px; background: #14203a; overflow: hidden; margin-top: .8rem; }
+  .bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--cyan), var(--blue)); transition: width .6s cubic-bezier(.22,1,.36,1); }
+  .bar.hot > i { background: linear-gradient(90deg, var(--amber), var(--red)); }
+
+  canvas.telemetry { width: 100%; height: 120px; display: block; margin-top: .5rem; }
+
+  /* ---------- terminal ---------- */
+  .term {
+    background: #030509;
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: .85rem;
+    line-height: 1.7;
+    min-height: 260px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .term .p { color: var(--red); }
+  .term .ok { color: var(--cyan); }
+  .term .warn { color: var(--amber); }
+  .term .info { color: var(--blue); }
+  .term-input {
+    display: flex; gap: .5rem; margin-top: .8rem;
+  }
+  .term-input input {
+    flex: 1;
+    background: #030509;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    color: var(--cyan);
+    font: inherit;
+    padding: .6rem .8rem;
+    outline: none;
+  }
+  .term-input input:focus { border-color: var(--cyan); }
+  .term-input button {
+    background: var(--cyan); color: var(--bg); border: none;
+    border-radius: 8px; padding: 0 1.2rem; font: inherit; font-weight: 700;
+    cursor: pointer;
+  }
+  .term-input button:hover { box-shadow: 0 0 18px rgba(0,255,213,.5); }
+
+  /* ---------- modules (network screen) ---------- */
+  .modules { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .module {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: transform .18s, border-color .18s, box-shadow .18s;
+    user-select: none;
+  }
+  .module:hover { transform: translateY(-3px); border-color: var(--cyan); box-shadow: 0 6px 24px rgba(0,255,213,.12); }
+  .module .led {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--cyan); box-shadow: 0 0 10px var(--cyan);
+    display: inline-block; margin-right: .5rem;
+  }
+  .module.warn .led { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+  .module.err .led { background: var(--red); box-shadow: 0 0 10px var(--red); }
+  .module h4 { font-size: .9rem; margin-bottom: .3rem; }
+  .module p { font-size: .75rem; color: var(--dim); }
+
+  footer { text-align: center; color: var(--dim); font-size: .75rem; padding: 2rem 1rem; border-top: 1px solid var(--edge); }
+  footer b { color: var(--cyan); }
+
+  @media (max-width: 600px) {
+    .clock { display: none; }
+    nav { gap: .3rem; }
+    nav a { padding: .45rem .7rem; font-size: .74rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">SYNTH&nbsp;OS <small>v4.2.1-sim</small></span>
+  <span class="clock">SYS TIME <b id="clock">--:--:--</b> · UPLINK <b>STABLE</b></span>
+</div>
+
+<nav id="nav">
+  <a href="#telemetry" class="active hvr-underline-from-left">TELEMETRY</a>
+  <a href="#terminal" class="hvr-underline-from-left">TERMINAL</a>
+  <a href="#network" class="hvr-underline-from-left">NETWORK</a>
+  <a href="#reactor" class="hvr-underline-from-left">REACTOR</a>
+</nav>
+
+<main>
+  <!-- TELEMETRY -->
+  <section class="screen on" id="telemetry">
+    <h2>Live telemetry</h2>
+    <div class="grid">
+      <div class="panel"><h3>CPU load</h3><div class="big" id="cpuVal">0<small>%</small></div><div class="bar" id="cpuBar"><i style="width:0%"></i></div></div>
+      <div class="panel"><h3>Memory</h3><div class="big" id="memVal">0<small>%</small></div><div class="bar" id="memBar"><i style="width:0%"></i></div></div>
+      <div class="panel"><h3>Network I/O</h3><div class="big" id="netVal">0<small> MB/s</small></div><div class="bar" id="netBar"><i style="width:0%"></i></div></div>
+      <div class="panel"><h3>Temp core</h3><div class="big" id="tmpVal">0<small>°C</small></div><div class="bar hot" id="tmpBar"><i style="width:0%"></i></div></div>
+    </div>
+    <h2>Signal waveform</h2>
+    <div class="panel"><canvas class="telemetry" id="wave" width="1000" height="240"></canvas></div>
+  </section>
+
+  <!-- TERMINAL -->
+  <section class="screen" id="terminal">
+    <h2>Command console</h2>
+    <div class="term" id="termOut"></div>
+    <form class="term-input" id="termForm">
+      <span class="p" style="align-self:center">synth@core:~$</span>
+      <input id="termIn" autocomplete="off" placeholder="type 'help'" aria-label="command">
+      <button type="submit">RUN</button>
+    </form>
+  </section>
+
+  <!-- NETWORK -->
+  <section class="screen" id="network">
+    <h2>Modules</h2>
+    <p style="color:var(--dim);font-size:.85rem;margin-bottom:1rem">Click a module to cycle its state. Simulated mesh of 8 nodes.</p>
+    <div class="modules" id="modules"></div>
+  </section>
+
+  <!-- REACTOR -->
+  <section class="screen" id="reactor">
+    <h2>Simulated reactor</h2>
+    <div class="grid">
+      <div class="panel"><h3>Output</h3><div class="big" id="rOut">3.20<small> GW</small></div><div class="bar" id="rBar"><i style="width:64%"></i></div></div>
+      <div class="panel"><h3>Containment</h3><div class="big ok" style="color:var(--cyan)">100<small>%</small></div><div class="bar"><i style="width:100%"></i></div></div>
+      <div class="panel" style="grid-column:1/-1">
+        <h3>Control rods</h3>
+        <input type="range" min="0" max="100" value="50" id="rods" style="width:100%;accent-color:#00ffd5">
+        <p style="color:var(--dim);font-size:.78rem;margin-top:.5rem">Rod insertion: <b id="rodVal" style="color:var(--cyan)">50%</b> — pull rods up to raise output. Purely a simulation.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>SYNTH OS is a <b>simulation</b> — a static website, no real hardware attached. Built with Animate.css + Hover.css.</footer>
+
+<script>
+// ---------- clock ----------
+const clock = document.getElementById('clock')
+setInterval(() => { clock.textContent = new Date().toLocaleTimeString('en-GB') }, 1000)
+
+// ---------- nav (Animate.css on screen switch) ----------
+const links = [...document.querySelectorAll('#nav a')]
+links.forEach(a => a.addEventListener('click', (e) => {
+  e.preventDefault()
+  links.forEach(l => l.classList.remove('active'))
+  a.classList.add('active')
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'))
+  const target = document.querySelector(a.getAttribute('href'))
+  target.classList.add('on')
+  target.classList.add('animate__animated', 'animate__fadeInUp', 'animate__faster')
+  target.addEventListener('animationend', () =>
+    target.classList.remove('animate__animated', 'animate__fadeInUp', 'animate__faster'), { once: true })
+}))
+
+// ---------- telemetry simulation ----------
+const rnd = (a, b) => a + Math.random() * (b - a)
+let cpu = 34, mem = 58, net = 210, tmp = 46
+function tickTelemetry() {
+  cpu = Math.min(97, Math.max(8, cpu + rnd(-7, 7)))
+  mem = Math.min(92, Math.max(30, mem + rnd(-3, 3)))
+  net = Math.min(950, Math.max(20, net + rnd(-60, 60)))
+  tmp = Math.min(88, Math.max(35, tmp + rnd(-2, 2)))
+  const set = (id, v, fmt) => document.getElementById(id).innerHTML = fmt(v)
+  set('cpuVal', Math.round(cpu), v => v + '<small>%</small>')
+  set('memVal', Math.round(mem), v => v + '<small>%</small>')
+  set('netVal', Math.round(net), v => v + '<small> MB/s</small>')
+  set('tmpVal', Math.round(tmp), v => v + '<small>°C</small>')
+  const bar = (id, pct) => { const el = document.getElementById(id).firstElementChild; el.style.width = pct + '%' }
+  bar('cpuBar', cpu); bar('memBar', mem); bar('netBar', net / 10); bar('tmpBar', tmp)
+}
+setInterval(tickTelemetry, 1400)
+tickTelemetry()
+
+// ---------- waveform ----------
+const wave = document.getElementById('wave')
+const wctx = wave.getContext('2d')
+let phase = 0
+function drawWave() {
+  const w = wave.width, h = wave.height
+  wctx.clearRect(0, 0, w, h)
+  wctx.strokeStyle = 'rgba(0,255,213,0.9)'
+  wctx.lineWidth = 2
+  wctx.beginPath()
+  for (let x = 0; x < w; x++) {
+    const y = h / 2
+      + Math.sin((x + phase) * 0.03) * 40 * (1 + 0.3 * Math.sin(phase * 0.01))
+      + Math.sin((x + phase) * 0.11) * 12
+      + (Math.random() - 0.5) * 5
+    x === 0 ? wctx.moveTo(x, y) : wctx.lineTo(x, y)
+  }
+  wctx.stroke()
+  wctx.strokeStyle = 'rgba(255,77,109,0.5)'
+  wctx.lineWidth = 1
+  wctx.beginPath()
+  for (let x = 0; x < w; x++) {
+    const y = h / 2 + Math.sin((x + phase * 0.6) * 0.05 + 2) * 55
+    x === 0 ? wctx.moveTo(x, y) : wctx.lineTo(x, y)
+  }
+  wctx.stroke()
+  phase += 2
+  requestAnimationFrame(drawWave)
+}
+drawWave()
+
+// ---------- terminal ----------
+const out = document.getElementById('termOut')
+const input = document.getElementById('termIn')
+function print(html) {
+  const line = document.createElement('div')
+  line.innerHTML = html
+  out.appendChild(line)
+  out.scrollTop = out.scrollHeight
+}
+print('<span class="ok">SYNTH OS terminal</span> — simulated environment. Type <span class="warn">help</span>.')
+const commands = {
+  help: () => print('available: <span class="warn">status · scan · ping · whoami · clear · coffee</span>'),
+  status: () => print('<span class="ok">ALL SYSTEMS NOMINAL</span> — cpu ' + Math.round(cpu) + '% · mem ' + Math.round(mem) + '% · temp ' + Math.round(tmp) + '°C'),
+  scan: () => { print('<span class="info">scanning mesh…</span>'); setTimeout(() => print('<span class="ok">8 nodes found. 0 intrusions.</span>'), 700) },
+  ping: () => print('<span class="ok">pong</span> — 0.42ms (simulated)'),
+  whoami: () => print('operator <span class="warn">synth-user</span> · clearance LEVEL 4'),
+  clear: () => { out.innerHTML = '' },
+  coffee: () => print('<span class="warn">brewing…</span> ☕ simulation complete. Energy +10.')
+}
+document.getElementById('termForm').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const cmd = input.value.trim().toLowerCase()
+  if (!cmd) return
+  print('<span class="p">synth@core:~$</span> ' + cmd.replace(/</g, '&lt;'))
+  ;(commands[cmd] || (() => print('command not found: <span class="warn">' + cmd.replace(/</g, '&lt;') + '</span>')))()
+  input.value = ''
+})
+
+// ---------- modules ----------
+const modState = ['ok', 'warn', 'err']
+const modulesEl = document.getElementById('modules')
+const names = ['RELAY-01', 'GATEWAY-EAST', 'MESH-CORE', 'SENSOR-GRID', 'BACKBONE-7', 'NODE-KRONOS', 'FIREWALL-A', 'UPLINK-X']
+names.forEach((n, i) => {
+  const d = document.createElement('div')
+  d.className = 'module ok animate__animated animate__fadeInUp'
+  d.style.animationDelay = (i * 80) + 'ms'
+  d.innerHTML = '<span class="led"></span><h4>' + n + '</h4><p>status: ONLINE</p>'
+  let s = 0
+  d.addEventListener('click', () => {
+    s = (s + 1) % 3
+    d.classList.remove('ok', 'warn', 'err')
+    d.classList.add(modState[s])
+    d.classList.add('animate__animated', 'animate__headShake')
+    d.addEventListener('animationend', () => d.classList.remove('animate__animated', 'animate__headShake'), { once: true })
+    d.querySelector('p').textContent = 'status: ' + ['ONLINE', 'DEGRADED', 'OFFLINE'][s]
+  })
+  modulesEl.appendChild(d)
+})
+
+// ---------- reactor ----------
+const rods = document.getElementById('rods')
+rods.addEventListener('input', () => {
+  const r = +rods.value
+  document.getElementById('rodVal').textContent = r + '%'
+  const output = (3.2 * (1 + (50 - r) / 60)).toFixed(2)
+  document.getElementById('rOut').innerHTML = output + '<small> GW</small>'
+  document.getElementById('rBar').firstElementChild.style.width = Math.min(100, output / 5 * 100) + '%'
+})
+</script>
+</body>
+</html>
